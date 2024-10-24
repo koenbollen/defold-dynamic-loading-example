@@ -1,0 +1,93 @@
+
+local registry = require("biomes.registry")
+
+local function post_biomes_loaded(self, url, biomes)
+	local atlases = {}
+	for _, biome in ipairs(biomes) do
+		table.insert(atlases, self.atlas_by_biome[biome])
+	end
+	msg.post(url, "biomes_loaded", {
+		biomes = biomes,
+		atlases = atlases,
+	})
+end
+
+local function on_biome_initialized(self, data, sender)
+	local biome_id = sender.socket
+
+	self.atlas_by_biome[biome_id] = data.decals
+
+	for request_id, req in pairs(self.requests) do
+		local done = true
+		for _, biome in ipairs(req.biomes) do
+			if not self.atlas_by_biome[biome] then
+				done = false
+				break
+			end
+		end
+		if done then
+			post_biomes_loaded(self, req.sender, req.biomes)
+			self.requests[request_id] = nil
+		end
+	end
+end
+
+function init(self)
+	print("biomes#loader.init()", msg.url())
+
+	registry.callback = function(data, sender)
+		on_biome_initialized(self, data, sender)
+	end
+
+	self.requests = {}
+	self.atlas_by_biome = {}
+
+	self.active = {}
+end
+
+function final(self)
+	for _, biome_id in pairs(self.active) do
+		msg.post(biome_id, "unload")
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("biomes_ensure") then
+		local biomes = message.biomes
+
+		print("Requested to ensure biomes", biomes, "are loaded")
+
+		local done = true
+		for _, biome in ipairs(biomes) do
+			if not self.atlas_by_biome[biome] then
+				local proxy_url = msg.url(nil, "biomes", biome)
+				msg.post(proxy_url, "async_load")
+				done = false
+			end
+		end
+		if done then
+			post_biomes_loaded(self, sender, biomes)
+		else
+			local request_id = math.random(1, 1000000)
+			self.requests[request_id] = {
+				sender = sender,
+				biomes = biomes,
+			}
+		end
+	end
+
+	if message_id == hash("proxy_loaded") then
+		local biome_id = sender.socket
+		self.active[biome_id] = sender
+		-- once a biome-proxy has been loaded, we make it initializes,
+		-- the biome.script's init() function will trigger registry.callback()
+		-- which contains the loaded atlas.
+		msg.post(sender, "init")
+		-- these biome-proxies are never enabled.
+	end
+
+	if message_id == hash("proxy_unloaded") then
+		local biome_id = sender.socket
+		self.active[biome_id] = false
+	end
+end

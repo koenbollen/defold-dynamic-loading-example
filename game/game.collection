@@ -1,0 +1,79 @@
+name: "game"
+instances {
+  id: "player"
+  prototype: "/game/player/player.go"
+  position {
+    x: 686.0
+    y: 371.0
+    z: 0.5
+  }
+}
+instances {
+  id: "portal"
+  prototype: "/game/portal.go"
+  position {
+    x: 261.0
+    y: 119.0
+  }
+}
+scale_along_z: 0
+embedded_instances {
+  id: "bg"
+  data: "embedded_components {\n"
+  "  id: \"sprite\"\n"
+  "  type: \"sprite\"\n"
+  "  data: \"default_animation: \\\"white_pixel\\\"\\n"
+  "material: \\\"/builtins/materials/sprite.material\\\"\\n"
+  "textures {\\n"
+  "  sampler: \\\"texture_sampler\\\"\\n"
+  "  texture: \\\"/assets/images/common.atlas\\\"\\n"
+  "}\\n"
+  "\"\n"
+  "  position {\n"
+  "    x: 480.0\n"
+  "    y: 320.0\n"
+  "  }\n"
+  "}\n"
+  ""
+  position {
+    z: -0.99
+  }
+}
+embedded_instances {
+  id: "debug"
+  data: "embedded_components {\n"
+  "  id: \"label\"\n"
+  "  type: \"label\"\n"
+  "  data: \"size {\\n"
+  "  x: 128.0\\n"
+  "  y: 30.0\\n"
+  "}\\n"
+  "pivot: PIVOT_SW\\n"
+  "text: \\\"game.collection\\\"\\n"
+  "font: \\\"/builtins/fonts/default.font\\\"\\n"
+  "material: \\\"/builtins/fonts/label-df.material\\\"\\n"
+  "\"\n"
+  "  position {\n"
+  "    y: 60.0\n"
+  "  }\n"
+  "}\n"
+  ""
+}
+embedded_instances {
+  id: "main"
+  data: "components {\n"
+  "  id: \"main\"\n"
+  "  component: \"/game/main.script\"\n"
+  "}\n"
+  ""
+}
+embedded_instances {
+  id: "factories"
+  data: "embedded_components {\n"
+  "  id: \"things\"\n"
+  "  type: \"factory\"\n"
+  "  data: \"prototype: \\\"/game/thing.go\\\"\\n"
+  "\"\n"
+  "}\n"
+  ""
+}

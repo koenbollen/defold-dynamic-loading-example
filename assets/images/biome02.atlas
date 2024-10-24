@@ -1,0 +1,13 @@
+images {
+  image: "/assets/images/biome02/tile_318.png"
+}
+images {
+  image: "/assets/images/biome02/tile_319.png"
+}
+images {
+  image: "/assets/images/biome02/tile_320.png"
+}
+images {
+  image: "/assets/images/biome02/skybox0.png"
+}
+extrude_borders: 2

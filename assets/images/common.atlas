@@ -1,0 +1,10 @@
+images {
+  image: "/assets/images/common/white_pixel.png"
+}
+images {
+  image: "/assets/images/common/manOld_stand.png"
+}
+images {
+  image: "/assets/images/common/tile_134.png"
+}
+extrude_borders: 2

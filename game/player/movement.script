@@ -1,0 +1,28 @@
+function init(self)
+	msg.post(".", "acquire_input_focus")
+end
+
+function update(self, dt)
+	if self.target then
+		local pos = go.get_position()
+		local depth = pos.z
+		local new_pos = self.target * 0.1 + pos * 0.9
+		new_pos.z = depth
+		go.set_position(new_pos)
+		local delta = new_pos - pos
+		local angle = math.atan2(delta.y, delta.x)
+		go.set_rotation(vmath.quat_rotation_z(angle))
+	end
+end
+
+function on_input(self, action_id, action)
+	if action_id == hash("touch") and action.x and action.y then
+		self.target = vmath.vector3(action.x, action.y, 0)
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("collision_response") then
+		msg.post("bootstrap:/loader", "next_level")
+	end
+end

@@ -1,0 +1,66 @@
+local levels = require("game.levels")
+
+function init(self)
+	-- msg.post("@system:", "toggle_profile")
+	msg.post(".", "acquire_input_focus")
+
+	self.current_level = 1
+
+	self.main_proxy = msg.url('bootstrap:/main#proxy')
+	self.game_proxy = msg.url('main:/game#proxy')
+	self.biomes_loader = msg.url('main:/biomes#loader')
+	self.game_main = msg.url('game:/main')
+
+	self.anim = timer.delay(0.2, true, function()
+		local text = label.get_text("#loading_text")
+		if text == "Loading" then
+			label.set_text("#loading_text", "Loading.")
+		else
+			label.set_text("#loading_text",  "Loading")
+		end
+	end)
+	timer.delay(2, false, function() -- simulate loading time
+		msg.post(self.main_proxy, "async_load")
+	end)
+end
+
+function final(self)
+	timer.cancel(self.anim)
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("proxy_loaded") then
+		if sender == self.main_proxy then
+			print("main_loaded", sender)
+			msg.post(self.main_proxy, "init")
+			msg.post(self.main_proxy, "enable") -- unless you enable it, the sub-proxies won't load
+
+			msg.post(self.game_proxy, "async_load")
+		elseif sender == self.game_proxy then
+			msg.post(self.game_proxy, "init")
+			local biome = levels[self.current_level].biome
+			msg.post(self.biomes_loader, "biomes_ensure", { biomes = {biome} }) -- request to load biomes needed for level
+		end
+	end
+	if message_id == hash("biomes_loaded") then
+		print("biomes_loaded", json.encode(message))
+		msg.post(self.game_proxy, "enable")
+		local biome = levels[self.current_level].biome
+		msg.post(self.game_main, "load_level", { level_id = 1, biome = biome, atlas = message.atlases[1] })
+	end
+	if message_id == hash("game_ready") then
+		msg.post(self.main_proxy, "acquire_input_focus")
+		msg.post(self.game_proxy, "acquire_input_focus")
+		msg.post("#loading_text", "disable")
+		msg.post(self.game_main, "game_start")
+	end
+
+	if message_id == hash("next_level") then
+		msg.post(self.game_proxy, "unload")
+		msg.post("#loading_text", "enable")
+		timer.delay(2, false, function() -- simulate loading time
+			self.current_level = (self.current_level % #levels) + 1
+			msg.post(self.game_proxy, "async_load")
+		end)
+	end
+end

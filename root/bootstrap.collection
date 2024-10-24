@@ -1,0 +1,33 @@
+name: "bootstrap"
+scale_along_z: 0
+embedded_instances {
+  id: "loader"
+  data: "components {\n"
+  "  id: \"loader\"\n"
+  "  component: \"/root/loader.script\"\n"
+  "}\n"
+  "embedded_components {\n"
+  "  id: \"loading_text\"\n"
+  "  type: \"label\"\n"
+  "  data: \"size {\\n"
+  "  x: 128.0\\n"
+  "  y: 30.0\\n"
+  "}\\n"
+  "pivot: PIVOT_SW\\n"
+  "text: \\\"Loading\\\"\\n"
+  "font: \\\"/builtins/fonts/default.font\\\"\\n"
+  "material: \\\"/builtins/fonts/label-df.material\\\"\\n"
+  "\"\n"
+  "}\n"
+  ""
+}
+embedded_instances {
+  id: "main"
+  data: "embedded_components {\n"
+  "  id: \"proxy\"\n"
+  "  type: \"collectionproxy\"\n"
+  "  data: \"collection: \\\"/root/main.collection\\\"\\n"
+  "\"\n"
+  "}\n"
+  ""
+}

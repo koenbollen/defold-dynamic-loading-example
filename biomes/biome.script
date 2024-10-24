@@ -1,0 +1,12 @@
+
+local registry = require "biomes.registry"
+
+go.property("decals", resource.atlas(""))
+
+function init(self)
+	registry.biome_initialized({
+		decals = self.decals
+	})
+end
+
+-- update and on_message functions here will not work, the collection is never enabled

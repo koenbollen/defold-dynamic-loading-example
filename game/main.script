@@ -1,0 +1,53 @@
+function init(self)
+	self.things = {}
+end
+
+function final(self)
+	for _, id in ipairs(self.things) do
+		go.delete(id, true)
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("load_level") then
+		local level_id = message.level_id
+		local biome = message.biome
+		local atlas = message.atlas
+
+		for _, id in ipairs(self.things) do
+			go.delete(id, true)
+		end
+
+		print("Loading level", level_id, "in", biome)
+
+		if atlas then
+			go.set("bg#sprite", "image", atlas)
+			sprite.play_flipbook("bg#sprite", "skybox0")
+			msg.post("bg#sprite", "enable")
+		else
+			msg.post("bg#sprite", "disable")
+		end
+
+		-- add 1 random entities:
+		for _ = 1, 10 do
+			local x = math.random(0, 940)
+			local y = math.random(0, 640)
+			local z = 0
+			local scale = math.random(1, 2)
+			local rotation = math.random(0, 360)
+			local color = vmath.vector4(math.random(), math.random(), math.random(), 1)
+			local id = factory.create("factories#things", vmath.vector3(x, y, z), vmath.quat_rotation_z(math.rad(rotation)), { scale = scale, color = color })
+			table.insert(self.things, id)
+			if atlas and math.random() < 0.8 then
+				local sprite_url = msg.url(nil, id, "sprite")
+				go.set(sprite_url, "image", atlas)
+			end
+		end
+
+		timer.delay(1, false, function() -- simulate loading time
+			msg.post(sender, "game_ready")
+		end)
+	elseif message_id == hash("game_start") then
+		print("Game started")
+	end
+end

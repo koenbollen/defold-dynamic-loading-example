@@ -1,0 +1,15 @@
+name: "biome02"
+scale_along_z: 0
+embedded_instances {
+  id: "data"
+  data: "components {\n"
+  "  id: \"biome\"\n"
+  "  component: \"/biomes/biome.script\"\n"
+  "  properties {\n"
+  "    id: \"decals\"\n"
+  "    value: \"/assets/images/biome02.atlas\"\n"
+  "    type: PROPERTY_TYPE_HASH\n"
+  "  }\n"
+  "}\n"
+  ""
+}
