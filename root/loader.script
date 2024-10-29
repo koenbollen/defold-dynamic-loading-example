@@ -43,7 +43,6 @@ function on_message(self, message_id, message, sender)
 		end
 	end
 	if message_id == hash("biomes_loaded") then
-		print("biomes_loaded", json.encode(message))
 		msg.post(self.game_proxy, "enable")
 		local biome = levels[self.current_level].biome
 		msg.post(self.game_main, "load_level", { level_id = 1, biome = biome, atlas = message.atlases[1] })

@@ -1,6 +1,18 @@
 
 local registry = require("biomes.registry")
 
+local function biomes_to_string(...)
+	local BIOME_NAMES = {
+		[hash("biome01")] = "biome01",
+		[hash("biome02")] = "biome02",
+	}
+	local t = {}
+	for i = 1, select("#", ...) do
+		table.insert(t, BIOME_NAMES[select(i, ...)])
+	end
+	return table.concat(t, ", ")
+end
+
 local function post_biomes_loaded(self, url, biomes)
 	local atlases = {}
 	for _, biome in ipairs(biomes) do
@@ -13,9 +25,13 @@ local function post_biomes_loaded(self, url, biomes)
 end
 
 local function on_biome_initialized(self, data, sender)
+	-- this is recieved straight from the biome.script in the biome collection,
+	-- so it's socket is it's biome_id.
 	local biome_id = sender.socket
 
 	self.atlas_by_biome[biome_id] = data.decals
+
+	print("Biome loaded: " .. biomes_to_string(biome_id))
 
 	for request_id, req in pairs(self.requests) do
 		local done = true
@@ -33,8 +49,6 @@ local function on_biome_initialized(self, data, sender)
 end
 
 function init(self)
-	print("biomes#loader.init()", msg.url())
-
 	registry.callback = function(data, sender)
 		on_biome_initialized(self, data, sender)
 	end
@@ -43,11 +57,13 @@ function init(self)
 	self.atlas_by_biome = {}
 
 	self.active = {}
+	self.unloading = {}
+	self.should_reload = {}
 end
 
 function final(self)
-	for _, biome_id in pairs(self.active) do
-		msg.post(biome_id, "unload")
+	for _, biome_url in pairs(self.active) do
+		msg.post(biome_url, "unload")
 	end
 end
 
@@ -55,17 +71,22 @@ function on_message(self, message_id, message, sender)
 	if message_id == hash("biomes_ensure") then
 		local biomes = message.biomes
 
-		print("Requested to ensure biomes", biomes, "are loaded")
+		print("Ensuring biomes " .. biomes_to_string(unpack(biomes)) .. " are loaded")
 
-		local done = true
-		for _, biome in ipairs(biomes) do
-			if not self.atlas_by_biome[biome] then
-				local proxy_url = msg.url(nil, "biomes", biome)
+		local dont_unload = {}
+		local all_biomes_loaded = true
+		for _, biome_id in ipairs(biomes) do
+			dont_unload[biome_id] = true
+			if self.unloading[biome_id] then
+				self.should_reload[biome_id] = true
+				all_biomes_loaded = false
+			elseif not self.atlas_by_biome[biome_id] then
+				local proxy_url = msg.url(nil, "biomes", biome_id)
 				msg.post(proxy_url, "async_load")
-				done = false
+				all_biomes_loaded = false
 			end
 		end
-		if done then
+		if all_biomes_loaded then
 			post_biomes_loaded(self, sender, biomes)
 		else
 			local request_id = math.random(1, 1000000)
@@ -74,10 +95,21 @@ function on_message(self, message_id, message, sender)
 				biomes = biomes,
 			}
 		end
+
+		-- unload any biomes that are not needed
+		for biome_id, _ in pairs(self.active) do
+			if not dont_unload[biome_id] then
+				self.unloading[biome_id] = true
+				msg.post(self.active[biome_id], "unload")
+				print("Unloading biome: " .. biomes_to_string(biome_id))
+			end
+		end
 	end
 
 	if message_id == hash("proxy_loaded") then
-		local biome_id = sender.socket
+		-- we get the proxy_loaded message from the proxy in the main collection,
+		-- the fragment name of this component is the biome_id.
+		local biome_id = sender.fragment
 		self.active[biome_id] = sender
 		-- once a biome-proxy has been loaded, we make it initializes,
 		-- the biome.script's init() function will trigger registry.callback()
@@ -87,7 +119,17 @@ function on_message(self, message_id, message, sender)
 	end
 
 	if message_id == hash("proxy_unloaded") then
-		local biome_id = sender.socket
-		self.active[biome_id] = false
+		local biome_id = sender.fragment
+		self.active[biome_id] = nil
+		self.unloading[biome_id] = nil
+		self.atlas_by_biome[biome_id] = nil
+
+		if self.should_reload[biome_id] then
+			self.should_reload[biome_id] = nil
+			msg.post(sender, "async_load")
+			print("Biome unloaded: " .. biomes_to_string(biome_id) .. ", but should be reloaded")
+		else
+			print("Biome unloaded: " .. biomes_to_string(biome_id))
+		end
 	end
 end
