@@ -1,3 +1,9 @@
+
+local TILE_MAPPING = {
+	[hash("biome01")] = {"tile_156", "tile_157"},
+	[hash("biome02")] = {"tile_318", "tile_319", "tile_320"},
+}
+
 function init(self)
 	self.things = {}
 end
@@ -38,9 +44,12 @@ function on_message(self, message_id, message, sender)
 			local color = vmath.vector4(math.random(), math.random(), math.random(), 1)
 			local id = factory.create("factories#things", vmath.vector3(x, y, z), vmath.quat_rotation_z(math.rad(rotation)), { scale = scale, color = color })
 			table.insert(self.things, id)
-			if atlas and math.random() < 0.8 then
+			if atlas and TILE_MAPPING[hash(biome)] then
 				local sprite_url = msg.url(nil, id, "sprite")
 				go.set(sprite_url, "image", atlas)
+				local mapping = TILE_MAPPING[hash(biome)]
+				local tile = mapping[math.random(1, #mapping)]
+				sprite.play_flipbook(sprite_url, tile)
 			end
 		end
 

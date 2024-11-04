@@ -13,6 +13,7 @@ input_method = HiddenInputField
 
 [project]
 title = proxy-testing
+gitsha = dev-build
 
 [liveupdate]
 mount_on_start = 1

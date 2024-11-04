@@ -1,16 +1,22 @@
 
 local registry = require("biomes.registry")
 
+local BIOME_NAMES = {
+	[hash("biome01")] = "biome01",
+	[hash("biome02")] = "biome02",
+}
+
 local function biomes_to_string(...)
-	local BIOME_NAMES = {
-		[hash("biome01")] = "biome01",
-		[hash("biome02")] = "biome02",
-	}
 	local t = {}
 	for i = 1, select("#", ...) do
 		table.insert(t, BIOME_NAMES[select(i, ...)])
 	end
 	return table.concat(t, ", ")
+end
+
+local function load_biome_proxy(biome_id)
+	local proxy_url = msg.url(nil, "biomes", biome_id)
+	msg.post(proxy_url, "async_load")
 end
 
 local function post_biomes_loaded(self, url, biomes)
@@ -31,7 +37,7 @@ local function on_biome_initialized(self, data, sender)
 
 	self.atlas_by_biome[biome_id] = data.decals
 
-	print("Biome loaded: " .. biomes_to_string(biome_id))
+	print("Biome loaded: " .. biomes_to_string(biome_id), data.decals)
 
 	for request_id, req in pairs(self.requests) do
 		local done = true
@@ -51,6 +57,27 @@ end
 function init(self)
 	registry.callback = function(data, sender)
 		on_biome_initialized(self, data, sender)
+	end
+
+	-- self.loader is used to load a biome, by default this loads the biome-proxy collection directly.
+	self.loader = load_biome_proxy
+	if liveupdate then
+		-- if liveupdate is enabled, we use the downloader to download the resourcepack for the biome, and
+		-- then load the biome-proxy collection.
+
+		local downloader = require("biomes.downloader")
+		downloader.init()
+
+		self.loader = function(biome_id)
+			local proxy_url = msg.url(nil, "biomes", biome_id)
+			local missing_resources = collectionproxy.missing_resources(proxy_url)
+			if next(missing_resources) ~= nil then
+				print("Downloading biome: " .. biomes_to_string(biome_id))
+				downloader.load(biome_id, BIOME_NAMES[biome_id], missing_resources, load_biome_proxy)
+			else
+				load_biome_proxy(biome_id)
+			end
+		end
 	end
 
 	self.requests = {}
@@ -78,12 +105,11 @@ function on_message(self, message_id, message, sender)
 		for _, biome_id in ipairs(biomes) do
 			dont_unload[biome_id] = true
 			if self.unloading[biome_id] then
+				all_biomes_loaded = false
 				self.should_reload[biome_id] = true
-				all_biomes_loaded = false
 			elseif not self.atlas_by_biome[biome_id] then
-				local proxy_url = msg.url(nil, "biomes", biome_id)
-				msg.post(proxy_url, "async_load")
 				all_biomes_loaded = false
+				self.loader(biome_id)
 			end
 		end
 		if all_biomes_loaded then
@@ -126,7 +152,7 @@ function on_message(self, message_id, message, sender)
 
 		if self.should_reload[biome_id] then
 			self.should_reload[biome_id] = nil
-			msg.post(sender, "async_load")
+			msg.post(sender, "async_load") -- reload doesn't need self.loader() since it was already loaded
 			print("Biome unloaded: " .. biomes_to_string(biome_id) .. ", but should be reloaded")
 		else
 			print("Biome unloaded: " .. biomes_to_string(biome_id))
